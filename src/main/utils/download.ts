@@ -1,7 +1,11 @@
 import { net, session } from 'electron'
-import { promises as fs } from 'fs'
+import { createWriteStream } from 'fs'
 
-export async function downloadFile(url: string, filePath: string): Promise<void> {
+export async function downloadFile(
+  url: string,
+  filePath: string,
+  progressCallback?: (percent: number) => void
+): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const request = net.request({
       url,
@@ -35,22 +39,50 @@ export async function downloadFile(url: string, filePath: string): Promise<void>
       'user-agent',
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'
     )
-
+    // 🔥新增：进度统计变量
+    let receivedBytes = 0
+    let totalBytes = 0
+    let lastPercent = -1
     request.on('response', (response) => {
       if (response.statusCode !== 200) {
         reject(new Error(`下载失败: HTTP ${response.statusCode}`))
         return
       }
 
-      const chunks: Buffer[] = []
+      // 获取文件总大小
+      totalBytes = parseInt(response.headers['content-length'] as string) || 0
+      console.log(`\n📥 开始下载：${url}`)
+      console.log(`📦 文件大小：${(totalBytes / 1024 / 1024).toFixed(2)} MB`)
+
+      // ==============================================
+      // 🔥 改用流式写入（支持大文件，不爆内存）
+      // ==============================================
+      const writeStream = createWriteStream(filePath)
+      // const chunks: Buffer[] = []
       response.on('data', (chunk) => {
-        chunks.push(chunk)
+        writeStream.write(chunk)
+        receivedBytes += chunk.length
+
+        if (totalBytes > 0) {
+          //传递进度状态
+          if (progressCallback) {
+            const percent = Math.floor((receivedBytes / totalBytes) * 100)
+            if (percent !== lastPercent && percent % 2 === 0) {
+              // 每2%打印一次，避免刷屏
+              lastPercent = percent
+              console.log(
+                `✅ 下载进度：${percent}% (${(receivedBytes / 1024 / 1024).toFixed(2)}MB / ${(totalBytes / 1024 / 1024).toFixed(2)}MB)`
+              )
+            }
+            progressCallback(percent)
+          }
+        }
       })
 
       response.on('end', async () => {
         try {
-          const buffer = Buffer.concat(chunks)
-          await fs.writeFile(filePath, buffer)
+          writeStream.end()
+          console.log(`\n✅ 下载完成！保存到：${filePath}`)
           resolve()
         } catch (err) {
           reject(err)

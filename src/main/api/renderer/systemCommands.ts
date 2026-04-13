@@ -2,6 +2,7 @@ import { exec, spawn } from 'child_process'
 import type { PluginManager } from '../../managers/pluginManager'
 import { BrowserWindow, clipboard, nativeImage, Notification, shell } from 'electron'
 import { promisify } from 'util'
+import os from 'os'
 import { GLOBAL_SCROLLBAR_CSS } from '../../core/globalStyles'
 import { screenCapture } from '../../core/screenCapture'
 import windowManager from '../../managers/windowManager'
@@ -447,11 +448,11 @@ async function handleOpenTerminal(
   } else if (process.platform === 'linux') {
     try {
       // 获取当前用户主目录作为默认路径
-      const folderPath = require('os').homedir()
+      const folderPath = os.homedir()
 
       // 依次尝试常用的终端启动方式，由于 spawn 不会像 exec 那样容易受到注入攻击
       // 我们通过尝试启动不同的进程来实现兼容性
-      const tryLaunch = (cmd: string, args: string[]) => {
+      const tryLaunch = (cmd: string, args: string[]): Promise<boolean> => {
         return new Promise<boolean>((resolve) => {
           const child = spawn(cmd, args, { detached: true, stdio: 'ignore' })
           child.on('error', () => resolve(false))

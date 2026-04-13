@@ -12,6 +12,9 @@ export interface Plugin {
   installed: boolean
   path?: string
   localVersion?: string
+  status: 'waiting' | 'downloading' | 'downloaded' | 'installed' | 'failed'
+  progress: number
+  errorMessage?: string
 }
 
 export interface CategoryInfo {
