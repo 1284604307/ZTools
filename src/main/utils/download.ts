@@ -79,14 +79,13 @@ export async function downloadFile(
         }
       })
 
-      response.on('end', async () => {
-        try {
-          writeStream.end()
-          console.log(`\n✅ 下载完成！保存到：${filePath}`)
-          resolve()
-        } catch (err) {
-          reject(err)
-        }
+      response.on('end', () => {
+        writeStream.end()
+      })
+
+      writeStream.on('finish', () => {
+        console.log(`\n✅ 下载完成！保存到：${filePath}`)
+        resolve()
       })
 
       response.on('error', (err) => {

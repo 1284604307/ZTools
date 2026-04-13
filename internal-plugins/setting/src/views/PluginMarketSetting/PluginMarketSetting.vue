@@ -221,7 +221,7 @@ async function fetchPlugins(): Promise<void> {
 }
 
 async function loadDownloadList(): Promise<void> {
-  let downListRecord = db.get('downList')
+  let downListRecord = await db.get('downList')
   downloadList.value = JSON.parse(downListRecord?.list || '[]') as Plugin[]
   const typeInstalledPluginsList = await Promise.resolve(window.ztools.internal.getPlugins())
   downloadList.value.forEach((plugin) => {
@@ -248,8 +248,12 @@ async function loadDownloadList(): Promise<void> {
 }
 
 // 更新数据库中的插件状态
-function updatePluginStatusInDb(pluginName: string, status: string, progress: number = 0): void {
-  const downListRecord = db.get('downList')
+async function updatePluginStatusInDb(
+  pluginName: string,
+  status: string,
+  progress: number = 0
+): Promise<void> {
+  const downListRecord = await db.get('downList')
   if (downListRecord) {
     const list = JSON.parse(downListRecord.list) as Plugin[]
     const plugin = list.find((p) => p.name === pluginName)
@@ -286,11 +290,11 @@ async function retryFailedDownload(pluginName: string): Promise<void> {
 }
 
 // 从下载列表删除
-function removeFromDownloadList(pluginName: string): void {
+async function removeFromDownloadList(pluginName: string): Promise<void> {
   const index = downloadList.value.findIndex((p) => p.name === pluginName)
   if (index !== -1) {
     downloadList.value.splice(index, 1)
-    const downListRecord = db.get('downList')
+    const downListRecord = await db.get('downList')
     if (downListRecord) {
       const list = JSON.parse(downListRecord.list) as Plugin[]
       const pluginIndex = list.findIndex((p) => p.name === pluginName)
@@ -425,7 +429,7 @@ async function handleUpgradePlugin(plugin: Plugin): Promise<void> {
 
 // 将插件加入待安装列表（仅 UI 状态，实际安装在 downloadPlugin 中处理）
 async function addPlugin2DownList(plugin: Plugin): Promise<void> {
-  let downList = db.get('downList')
+  let downList = await db.get('downList')
   let list: Plugin[] = []
   if (!downList) {
     downList = {
